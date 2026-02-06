@@ -4,60 +4,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Protótipo Preditivo de Finalizações</title>
+    <title>⚽ Preditor de Finalizações - Analytics</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
-    <h1>Protótipo Preditivo de Finalizações</h1>
-    <div class="container">
+    <!-- Background Gradient Animation -->
+    <div class="gradient-bg"></div>
 
-        <h2>Jogador</h2>
-        <label>Média de finalizações por jogo</label>
-        <input type="number" id="mediaFinalizacoes" step="0.1" value="3.4">
+    <!-- Hero Header -->
+    <header class="hero">
+        <div class="hero-content">
+            <div class="logo">⚽</div>
+            <h1>Preditor de Finalizações</h1>
+            <p class="subtitle">Análise preditiva avançada baseada em Distribuição de Poisson</p>
+        </div>
+    </header>
 
-        <label>Forma recente do jogador (média últimos 5 jogos)</label>
-        <input type="number" id="mediaFormaRecente" step="0.1" value="2.5">
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Panel - Inputs -->
+        <div class="input-panel">
 
-        <label>Posição do jogador</label>
-        <select id="posicaoJogador">
-            <option value="atacante">Atacante / Centroavante</option>
-            <option value="ponta">Ponta / Extremo</option>
-            <option value="meia_ofensivo">Meia Ofensivo</option>
-            <option value="meia_central">Meia Central</option>
-            <option value="volante">Volante</option>
-            <option value="lateral">Lateral</option>
-            <option value="zagueiro">Zagueiro</option>
-        </select>
+            <!-- Player Stats Card -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">👤</span>
+                    <h2>Estatísticas do Jogador</h2>
+                </div>
 
-        <label>Minutos médios por partida</label>
-        <input type="number" id="minutosPartida" step="1" value="90">
+                <div class="input-group">
+                    <label>Média de Finalizações por Jogo</label>
+                    <input type="number" id="mediaFinalizacoes" step="0.1" value="3.4" placeholder="Ex: 3.4">
+                </div>
 
-        <label>Partidas jogadas</label>
-        <input type="number" id="partidasJogadas" step="1" value="5">
+                <div class="input-group">
+                    <label>Forma Recente (últimos 5 jogos)</label>
+                    <input type="number" id="mediaFormaRecente" step="0.1" value="2.5" placeholder="Ex: 2.5">
+                </div>
 
-        <h2>Adversário</h2>
-        <label>Média de finalizações sofridas pelo adversário por jogo</label>
-        <input type="number" id="finalizacoesSofridasAdversario" step="0.1" value="12" min="5" max="25">
-        <small style="color: #aaa; font-size: 12px;">Referência: Defesa forte ~8 | Média ~12 | Fraca ~17</small>
+                <div class="input-group">
+                    <label>Posição do Jogador</label>
+                    <select id="posicaoJogador">
+                        <option value="atacante">⚡ Atacante / Centroavante</option>
+                        <option value="ponta">🔥 Ponta / Extremo</option>
+                        <option value="meia_ofensivo">✨ Meia Ofensivo</option>
+                        <option value="meia_central">⭐ Meia Central</option>
+                        <option value="volante">🛡️ Volante</option>
+                        <option value="lateral">◀️ Lateral</option>
+                        <option value="zagueiro">🔒 Zagueiro</option>
+                    </select>
+                </div>
 
-        <h2>Contexto do Jogo</h2>
-        <label>Estilo de jogo da equipe</label>
-        <select id="estiloJogo">
-            <option value="equilibrado" selected>Equilibrado</option>
-            <option value="ofensivo_intenso">Ofensivo Intenso</option>
-            <option value="defensivo">Defensivo / Reativo</option>
-        </select>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>Minutos/Partida</label>
+                        <input type="number" id="minutosPartida" step="1" value="90" placeholder="90">
+                    </div>
+                    <div class="input-group">
+                        <label>Partidas Jogadas</label>
+                        <input type="number" id="partidasJogadas" step="1" value="5" placeholder="5">
+                    </div>
+                </div>
 
-        <h2>Linha da Aposta</h2>
-        <label>Quantas finalizações o jogador precisa ter para bater a aposta?</label>
-        <input type="number" id="linhaAposta" step="0.5" value="3">
+                <div class="input-group">
+                    <label>Finalizações da Equipe por Jogo</label>
+                    <input type="number" id="finalizacoesEquipe" step="0.1" value="12" min="5" max="25"
+                        placeholder="12">
+                    <small>⚽ Ataque fraco ~8 | Média ~12 | Forte ~17</small>
+                </div>
+            </div>
 
-        <button onclick="calcular()">Calcular Probabilidade + Odd</button>
+            <!-- Opponent Card -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">🎯</span>
+                    <h2>Adversário</h2>
+                </div>
 
-        <div class="resultado" id="resultado">
-            Probabilidade: <span>0.00%</span><br>
-            Odd justa: <span>0.00</span>
+                <div class="input-group">
+                    <label>Finalizações Sofridas pelo Adversário</label>
+                    <input type="number" id="finalizacoesSofridasAdversario" step="0.1" value="12" min="5" max="25"
+                        placeholder="12">
+                    <small>💡 Defesa forte ~8 | Média ~12 | Fraca ~17</small>
+                </div>
+            </div>
+
+            <!-- Match Context Card -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">⚙️</span>
+                    <h2>Contexto da Partida</h2>
+                </div>
+
+                <div class="input-group">
+                    <label>Estilo de Jogo da Equipe</label>
+                    <select id="estiloJogo">
+                        <option value="equilibrado" selected>⚖️ Equilibrado</option>
+                        <option value="ofensivo_intenso">🚀 Ofensivo Intenso</option>
+                        <option value="defensivo">🛡️ Defensivo / Reativo</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Linha da Aposta</label>
+                    <input type="number" id="linhaAposta" step="0.5" value="3" placeholder="3">
+                    <small>💰 Quantas finalizações para ganhar a aposta?</small>
+                </div>
+            </div>
+
+            <!-- Calculate Button -->
+            <button class="btn-calculate" onclick="calcular()">
+                <span class="btn-icon">🎲</span>
+                <span class="btn-text">Calcular Probabilidade</span>
+            </button>
+        </div>
+
+        <!-- Right Panel - Results -->
+        <div class="results-panel">
+            <div class="results-card" id="resultado">
+                <div class="results-placeholder">
+                    <div class="placeholder-icon">📊</div>
+                    <h3>Aguardando Análise</h3>
+                    <p>Preencha os dados e clique em "Calcular Probabilidade"</p>
+                </div>
+            </div>
         </div>
     </div>
 

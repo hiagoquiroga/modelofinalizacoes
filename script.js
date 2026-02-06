@@ -6,6 +6,7 @@ const mediasHistoricas = {
     mediaFinalizacoes: 3.5,
     mediaFormaRecente: 3.0,
     finalizacoesSofridas: 12.0,     // Média de finalizações sofridas em uma liga típica
+    finalizacoesEquipe: 12.0,       // Média de finalizações feitas pela equipe em uma liga típica
     minutosMediaPorPartida: 70      // Média esperada de minutos por partida
 };
 
@@ -77,6 +78,10 @@ function validarInputs(inputs, minutos, partidas, linha) {
         erros.push("Finalizações sofridas pelo adversário deve estar entre 1 e 30");
     }
 
+    if (isNaN(inputs.finalizacoesEquipe) || inputs.finalizacoesEquipe < 1 || inputs.finalizacoesEquipe > 30) {
+        erros.push("Finalizações da equipe deve estar entre 1 e 30");
+    }
+
     if (isNaN(minutos) || minutos < 1 || minutos > 120) {
         erros.push("Minutos deve estar entre 1 e 120");
     }
@@ -116,16 +121,25 @@ function expectativaFinalizacoes(inputs, posicao, estilo, minutos, partidas) {
     lambda += ajustePosicao;
 
     // ============================================================
-    // 3. QUALIDADE DO ADVERSÁRIO (PESO AUMENTADO 15% → 25%)
+    // 3. CONTEXTO OFENSIVO (INVERSO - FORÇA DEFENSIVA DO ADVERSÁRIO)
     // ============================================================
-    // Defensivas fracas (mais finalizações sofridas) = mais oportunidades para o jogador
-    // Fator > 1.0 indica adversário fraco (sofre mais chutes que a média)
-    // Fator < 1.0 indica adversário forte (sofre menos chutes que a média)
-    const fatorAdversario = inputs.finalizacoesSofridasAdversario / mediasHistoricas.finalizacoesSofridas;
+    // Compara o que o adversário SOFRE vs o que a equipe normalmente FAZ
+    // Lógica: Se adversário sofre MENOS que a equipe faz = defesa FORTE = desfavorável
+    //         Se adversário sofre MAIS que a equipe faz = defesa FRACA = favorável
 
-    // Ajuste mais agressivo com peso aumentado
-    const ajusteAdversario = (fatorAdversario - 1.0) * pesos.qualidadeAdversario * lambda;
-    lambda += ajusteAdversario;
+    // Ratio defensivo: quanto o adversário sofre em relação ao que a equipe faz
+    const ratioDefensivo = inputs.finalizacoesSofridasAdversario / inputs.finalizacoesEquipe;
+
+    // Exemplos:
+    // - Equipe faz 15, Adversário sofre 10 → ratio = 0.67 (defesa forte, -33%)
+    // - Equipe faz 10, Adversário sofre 15 → ratio = 1.50 (defesa fraca, +50%)
+    // - Equipe faz 12, Adversário sofre 12 → ratio = 1.00 (neutro)
+
+    // Ajustar lambda baseado no ratio defensivo
+    // ratio > 1.0 = adversário sofre mais (defesa fraca) → AUMENTA probabilidade
+    // ratio < 1.0 = adversário sofre menos (defesa forte) → DIMINUI probabilidade
+    const ajusteContexto = (ratioDefensivo - 1.0) * pesos.qualidadeAdversario * lambda;
+    lambda += ajusteContexto;
 
     // ============================================================
     // 4. AJUSTE DE ESTILO DE JOGO (multiplicativo)
@@ -252,7 +266,8 @@ function calcular() {
         const inputs = {
             mediaFinalizacoes: parseFloat(document.getElementById('mediaFinalizacoes').value),
             mediaFormaRecente: parseFloat(document.getElementById('mediaFormaRecente').value),
-            finalizacoesSofridasAdversario: parseFloat(document.getElementById('finalizacoesSofridasAdversario').value)
+            finalizacoesSofridasAdversario: parseFloat(document.getElementById('finalizacoesSofridasAdversario').value),
+            finalizacoesEquipe: parseFloat(document.getElementById('finalizacoesEquipe').value)
         };
 
         const posicao = document.getElementById('posicaoJogador').value;
@@ -281,20 +296,46 @@ function calcular() {
         // Avaliar qualidade da predição
         const qualidade = avaliarQualidadePredicao(partidas, minutos);
 
-        // Atualizar interface
+        // Atualizar interface com design premium
         const resultadoDiv = document.getElementById('resultado');
+
+        // Determine quality alert class
+        let qualityClass = 'high';
+        let qualityIcon = '✅';
+        if (qualidade.nivel === 'MÉDIA') {
+            qualityClass = 'medium';
+            qualityIcon = '⚡';
+        } else if (qualidade.nivel === 'BAIXA') {
+            qualityClass = 'low';
+            qualityIcon = '⚠️';
+        }
+
         resultadoDiv.innerHTML = `
-            <div class="probabilidade-principal">
-                Probabilidade: <span id="probValue">${(prob * 100).toFixed(2)}%</span>
+            <div class="probability-main">
+                <div class="label">Probabilidade de Sucesso</div>
+                <div class="value">${(prob * 100).toFixed(2)}%</div>
+                <div class="description">Chance de atingir ${linha}+ finalizações</div>
             </div>
-            <div class="odd-justa">
-                Odd justa: <span id="oddValue">${odd}</span>
+            
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="label">Odd Justa</div>
+                    <div class="value">${odd}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Expectativa (λ)</div>
+                    <div class="value">${lambda.toFixed(2)}</div>
+                </div>
             </div>
-            <div class="intervalo-confianca">
-                Intervalo de confiança (95%): <span id="intervalo">${intervalo.min} - ${intervalo.max} finalizações</span>
+            
+            <div class="confidence-range">
+                <div class="label">Intervalo de Confiança (95%)</div>
+                <div class="value">${intervalo.min} - ${intervalo.max} finalizações</div>
             </div>
-            <div class="alerta-qualidade ${qualidade.classe}" style="background-color: ${qualidade.cor}22; color: ${qualidade.cor};">
-                ${qualidade.mensagem}
+            
+            <div class="quality-alert ${qualityClass}">
+                <span>${qualityIcon}</span>
+                <span>${qualidade.mensagem}</span>
             </div>
         `;
 
