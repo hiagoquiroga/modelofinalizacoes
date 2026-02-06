@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protótipo Preditivo de Finalizações</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1>Protótipo Preditivo de Finalizações</h1>
+    <div class="container">
+
+        <h2>Jogador</h2>
+        <label>Média de finalizações por jogo</label>
+        <input type="number" id="mediaFinalizacoes" step="0.1" value="3.4">
+
+        <label>Forma recente do jogador (média últimos 5 jogos)</label>
+        <input type="number" id="mediaFormaRecente" step="0.1" value="2.5">
+
+        <label>Posição do jogador</label>
+        <select id="posicaoJogador">
+            <option value="atacante">Atacante / Centroavante</option>
+            <option value="ponta">Ponta / Extremo</option>
+            <option value="meia_ofensivo">Meia Ofensivo</option>
+            <option value="meia_central">Meia Central</option>
+            <option value="volante">Volante</option>
+            <option value="lateral">Lateral</option>
+            <option value="zagueiro">Zagueiro</option>
+        </select>
+
+        <label>Minutos médios por partida</label>
+        <input type="number" id="minutosPartida" step="1" value="90">
+
+        <label>Partidas jogadas</label>
+        <input type="number" id="partidasJogadas" step="1" value="5">
+
+        <h2>Adversário</h2>
+        <label>Média de finalizações sofridas pelo adversário por jogo</label>
+        <input type="number" id="finalizacoesSofridasAdversario" step="0.1" value="12" min="5" max="25">
+        <small style="color: #aaa; font-size: 12px;">Referência: Defesa forte ~8 | Média ~12 | Fraca ~17</small>
+
+        <h2>Contexto do Jogo</h2>
+        <label>Estilo de jogo da equipe</label>
+        <select id="estiloJogo">
+            <option value="equilibrado" selected>Equilibrado</option>
+            <option value="ofensivo_intenso">Ofensivo Intenso</option>
+            <option value="defensivo">Defensivo / Reativo</option>
+        </select>
+
+        <h2>Linha da Aposta</h2>
+        <label>Quantas finalizações o jogador precisa ter para bater a aposta?</label>
+        <input type="number" id="linhaAposta" step="0.5" value="3">
+
+        <button onclick="calcular()">Calcular Probabilidade + Odd</button>
+
+        <div class="resultado" id="resultado">
+            Probabilidade: <span>0.00%</span><br>
+            Odd justa: <span>0.00</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
