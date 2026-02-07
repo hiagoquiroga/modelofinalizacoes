@@ -13,10 +13,10 @@ const mediasHistoricas = {
 // Pesos recalibrados - Modelo Aprimorado (total = 100%)
 // AJUSTE PRINCIPAL: Aumentado peso do adversário de 15% → 25%
 const pesos = {
-    mediaFinalizacoes: 0.50,         // 40% - Baseline histórico (reduzido de 48%)
-    mediaFormaRecente: 0.10,         // 18% - Forma recente (reduzido de 20%)
+    mediaFinalizacoes: 0.40,         // 40% - Baseline histórico (reduzido de 48%)
+    mediaFormaRecente: 0.18,         // 18% - Forma recente (reduzido de 20%)
     posicao: 0.10,                   // 10% - Posição do jogador
-    qualidadeAdversario: 0.13,       // 25% - Qualidade do adversário (AUMENTADO de 15%)
+    qualidadeAdversario: 0.25,       // 25% - Qualidade do adversário (AUMENTADO de 15%)
     estiloJogo: 0.07                 // 7%  - Estilo de jogo
 };
 
@@ -31,10 +31,11 @@ const multiplicadorPosicao = {
     zagueiro: 0.45
 };
 
-// Multiplicadores por mando de campo
-const multiplicadorMando = {
-    casa: 1.05,
-    fora: 0.95
+// Multiplicadores por estilo de jogo da equipe (ajustados)
+const multiplicadorEstilo = {
+    ofensivo_intenso: 1.12,
+    equilibrado: 1.00,
+    defensivo: 0.88
 };
 
 // ========================================
@@ -100,50 +101,95 @@ function validarInputs(inputs, minutos, partidas, linha) {
 // CÁLCULO DA EXPECTATIVA (LAMBDA)
 // ========================================
 
-function expectativaFinalizacoes(inputs, posicao, estilo, mando, minutos, partidas) {
-    // MODELO MULTIPLICATIVO PURO (Correção de odds e bônus reais)
+function expectativaFinalizacoes(inputs, posicao, estilo, minutos, partidas) {
+    // MODELO APRIMORADO: Considera relação minutos x partidas x volume de chutes
 
-    // 1. BASE UNITÁRIA (Média ponderada entre Histórico e Forma)
-    // Peso Histórico: 40% | Peso Forma: 20%
-    // Normalizamos para extrair a tendência real do jogador
-    let lambda = (inputs.mediaFinalizacoes * 0.40 + inputs.mediaFormaRecente * 0.20) / 0.50;
+    // Base: começa com a média histórica de finalizações
+    let lambda = inputs.mediaFinalizacoes;
 
-    // 2. MULTIPLICADOR DE POSIÇÃO (Impacto Direto)
-    lambda *= multiplicadorPosicao[posicao];
+    // ============================================================
+    // 1. AJUSTE DE FORMA RECENTE (ponderado diferencial)
+    // ============================================================
+    const diferencaForma = inputs.mediaFormaRecente - inputs.mediaFinalizacoes;
+    const pesoRelativoForma = pesos.mediaFormaRecente / pesos.mediaFinalizacoes;
+    lambda += (diferencaForma * pesoRelativoForma);
 
-    // 3. MULTIPLICADOR DE ESTILO (Impacto Direto)
+    // ============================================================
+    // 2. AJUSTE DE POSIÇÃO (multiplicativo)
+    // ============================================================
+    const ajustePosicao = lambda * (multiplicadorPosicao[posicao] - 1.0) * pesos.posicao;
+    lambda += ajustePosicao;
+
+    // ============================================================
+    // 3. CONTEXTO OFENSIVO (INVERSO - FORÇA DEFENSIVA DO ADVERSÁRIO)
+    // ============================================================
+    // Compara o que o adversário SOFRE vs o que a equipe normalmente FAZ
+    // Lógica: Se adversário sofre MENOS que a equipe faz = defesa FORTE = desfavorável
+    //         Se adversário sofre MAIS que a equipe faz = defesa FRACA = favorável
+
+    // Ratio defensivo: quanto o adversário sofre em relação ao que a equipe faz
+    const ratioDefensivo = inputs.finalizacoesSofridasAdversario / inputs.finalizacoesEquipe;
+
+    // Exemplos:
+    // - Equipe faz 15, Adversário sofre 10 → ratio = 0.67 (defesa forte, -33%)
+    // - Equipe faz 10, Adversário sofre 15 → ratio = 1.50 (defesa fraca, +50%)
+    // - Equipe faz 12, Adversário sofre 12 → ratio = 1.00 (neutro)
+
+    // Ajustar lambda baseado no ratio defensivo
+    // ratio > 1.0 = adversário sofre mais (defesa fraca) → AUMENTA probabilidade
+    // ratio < 1.0 = adversário sofre menos (defesa forte) → DIMINUI probabilidade
+    const ajusteContexto = (ratioDefensivo - 1.0) * pesos.qualidadeAdversario * lambda;
+    lambda += ajusteContexto;
+
+    // ============================================================
+    // 4. AJUSTE DE ESTILO DE JOGO (multiplicativo)
+    // ============================================================
     lambda *= multiplicadorEstilo[estilo];
 
-    // 4. MULTIPLICADOR DE MANDO (Casa/Fora)
-    lambda *= multiplicadorMando[mando];
+    // ============================================================
+    // 5. FATOR DE MINUTOS E VOLUME DE PARTIDAS (CONFIANÇA COMBINADA)
+    // ============================================================
+    // LÓGICA: Mais minutos/partida + Mais partidas = Maior confiança
+    // IMPORTANTE: 'minutos' JÁ É A MÉDIA DE MINUTOS POR PARTIDA (do input do HTML)
 
-    // 5. CONTEXTO DEFENSIVO (Diferencial de finalizações sofridas)
-    // Ratio: O que o adversário sofre vs o que a equipe faz
-    const ratioDefensivo = inputs.finalizacoesSofridasAdversario / inputs.finalizacoesEquipe;
-    // Bônus de até 35% do diferencial (range controlado)
-    const multiplicadorDefensivo = 1 + (ratioDefensivo - 1.0) * 0.35;
-    lambda *= multiplicadorDefensivo;
+    // A) FATOR DE MÉDIA DE MINUTOS (interpolação linear 0.2 a 1.0)
+    // Quanto mais perto de 90 minutos, maior o peso
+    // Fórmula: 0.2 + (min/90) * 0.8
+    const fatorMinutos = Math.min(1.0, 0.2 + (minutos / 90) * 0.8);
 
-    // 6. FATOR DE MINUTOS (Range conservador para não derreter as odds)
-    // Minutos agora apenas ajustam levemente para baixo se o jogador joga pouco
-    const fatorMinutos = 0.85 + (minutos / 90) * 0.15;
-    lambda *= Math.min(1.0, fatorMinutos);
+    // Exemplos:
+    // 0 min   → 0.20
+    // 30 min  → 0.47
+    // 45 min  → 0.60
+    // 60 min  → 0.73
+    // 75 min  → 0.87
+    // 90+ min → 1.00
 
-    // 7. FATOR DE VOLUME / CONFIANÇA (0.90 a 1.10)
-    // Resolve o bug de odds baixas. A confiança não infla o lambda, apenas valida.
-    let fatorVolume;
-    if (partidas >= 20) {
-        fatorVolume = 1.0;
-    } else if (partidas >= 10) {
-        fatorVolume = 0.88 + ((partidas - 10) / 10) * 0.12;
-    } else if (partidas >= 5) {
-        fatorVolume = 0.65 + ((partidas - 5) / 5) * 0.23;
-    } else {
-        fatorVolume = ((partidas - 1) / 4) * 0.65;
-    }
+    // B) FATOR DE VOLUME DE PARTIDAS (interpolação linear 0.3 a 1.0)
+    // Mais partidas = mais confiança estatística
+    // Fórmula: 0.3 + ((partidas-1)/14) * 0.7
+    const fatorVolume = Math.min(1.0, 0.3 + ((partidas - 1) / 14) * 0.7);
 
-    // Traduz o volume para um multiplicador de 0.90 a 1.10
-    const multiplicadorConfianca = 0.90 + (fatorVolume * 0.20);
+    // Exemplos:
+    // 1 partida  → 0.30
+    // 3 partidas → 0.40
+    // 5 partidas → 0.50
+    // 8 partidas → 0.65
+    // 12 partidas → 0.85
+    // 15+ partidas → 1.00
+
+    // C) AJUSTE DE CONFIANÇA BASEADO EM MINUTOS E PARTIDAS
+    // Combina os dois fatores em um multiplicador de confiança (0.3 a 1.5)
+    // Range mais agressivo para impacto visível
+
+    const pesoMinutosEPartidas = fatorMinutos * fatorVolume;
+
+    // Interpolar o peso (0 a 1) para um multiplicador de confiança (0.3 a 1.5)
+    // Peso mínimo (0.2*0.3=0.06) → Multiplicador 0.37 (penalidade BRUTAL)
+    // Peso baixo (0.4*0.5=0.20) → Multiplicador 0.54 (penalidade forte)
+    // Peso médio (0.7*0.7=0.49) → Multiplicador 0.89 (penalidade moderada)
+    // Peso alto (1.0*1.0=1.00) → Multiplicador 1.50 (bônus forte)
+    const multiplicadorConfianca = 0.30 + (pesoMinutosEPartidas * 1.20);
     lambda *= multiplicadorConfianca;
 
     // Garantir valor mínimo positivo
@@ -210,12 +256,6 @@ function oddJusta(probabilidade) {
     return (1 / probabilidade).toFixed(2);
 }
 
-const multiplicadorEstilo = {
-    ofensivo_intenso: 1.12,
-    equilibrado: 1.00,
-    defensivo: 0.88
-};
-
 // ========================================
 // FUNÇÃO PRINCIPAL DE CÁLCULO
 // ========================================
@@ -231,7 +271,6 @@ function calcular() {
         };
 
         const posicao = document.getElementById('posicaoJogador').value;
-        const mando = document.getElementById('mandoCampo').value;
         const estilo = document.getElementById('estiloJogo').value;
         const linha = parseFloat(document.getElementById('linhaAposta').value);
         const minutos = parseFloat(document.getElementById('minutosPartida').value);
@@ -244,8 +283,8 @@ function calcular() {
             return;
         }
 
-        // Calcular lambda (expectativa de finalizações) - NOVO MODELO SEQUENCIAL
-        const lambda = expectativaFinalizacoes(inputs, posicao, estilo, mando, minutos, partidas);
+        // Calcular lambda (expectativa de finalizações) - MODELO SIMPLIFICADO
+        const lambda = expectativaFinalizacoes(inputs, posicao, estilo, minutos, partidas);
 
         // Calcular probabilidade usando Poisson
         const prob = poissonProb(lambda, Math.ceil(linha));
