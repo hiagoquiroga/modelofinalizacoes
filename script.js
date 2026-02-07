@@ -13,10 +13,10 @@ const mediasHistoricas = {
 // Pesos recalibrados - Modelo Aprimorado (total = 100%)
 // AJUSTE PRINCIPAL: Aumentado peso do adversário de 15% → 25%
 const pesos = {
-    mediaFinalizacoes: 0.40,         // 40% - Baseline histórico (reduzido de 48%)
-    mediaFormaRecente: 0.20,         // 18% - Forma recente (reduzido de 20%)
+    mediaFinalizacoes: 0.50,         // 40% - Baseline histórico (reduzido de 48%)
+    mediaFormaRecente: 0.10,         // 18% - Forma recente (reduzido de 20%)
     posicao: 0.10,                   // 10% - Posição do jogador
-    qualidadeAdversario: 0.23,       // 25% - Qualidade do adversário (AUMENTADO de 15%)
+    qualidadeAdversario: 0.13,       // 25% - Qualidade do adversário (AUMENTADO de 15%)
     estiloJogo: 0.07                 // 7%  - Estilo de jogo
 };
 
@@ -106,7 +106,7 @@ function expectativaFinalizacoes(inputs, posicao, estilo, mando, minutos, partid
     // 1. BASE UNITÁRIA (Média ponderada entre Histórico e Forma)
     // Peso Histórico: 40% | Peso Forma: 20%
     // Normalizamos para extrair a tendência real do jogador
-    let lambda = (inputs.mediaFinalizacoes * 0.40 + inputs.mediaFormaRecente * 0.20) / 0.60;
+    let lambda = (inputs.mediaFinalizacoes * 0.40 + inputs.mediaFormaRecente * 0.20) / 0.50;
 
     // 2. MULTIPLICADOR DE POSIÇÃO (Impacto Direto)
     lambda *= multiplicadorPosicao[posicao];
