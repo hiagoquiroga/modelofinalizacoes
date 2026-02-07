@@ -106,7 +106,7 @@ function expectativaFinalizacoes(inputs, posicao, estilo, mando, minutos, partid
     // 1. BASE UNITÁRIA (Média ponderada entre Histórico e Forma)
     // Peso Histórico: 40% | Peso Forma: 20%
     // Normalizamos para extrair a tendência real do jogador
-    let lambda = (inputs.mediaFinalizacoes * 0.40 + inputs.mediaFormaRecente * 0.15) / 0.60;
+    let lambda = (inputs.mediaFinalizacoes * 0.42 + inputs.mediaFormaRecente * 0.18) / 0.60;
 
     // 2. MULTIPLICADOR DE POSIÇÃO (Impacto Direto)
     lambda *= multiplicadorPosicao[posicao];
