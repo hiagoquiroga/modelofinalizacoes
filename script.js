@@ -165,22 +165,34 @@ function expectativaFinalizacoes(inputs, posicao, estilo, minutos, partidas) {
     // 75 min  → 0.95
     // 90+ min → 1.00
 
-    // B) FATOR DE VOLUME DE PARTIDAS (curva logarítmica suavizada com cap em 20)
-    // Mais partidas = mais confiança estatística
-    // Usa log para crescer até 20 partidas, depois estabiliza
-    // Fórmula: 0.80 + (log(partidas) / log(20)) * 0.20
-    const fatorVolume = partidas >= 20
-        ? 1.0
-        : Math.min(1.0, 0.80 + (Math.log(partidas) / Math.log(20)) * 0.20);
+    // B) FATOR DE VOLUME DE PARTIDAS (crescimento por segmentos / piecewise)
+    // Lógica: 
+    // 1-5 jogos: Crescimento agressivo (gap grande)
+    // 5-10 jogos: Crescimento moderado (gap médio)
+    // 10-20 jogos: Crescimento sutil (gap pequeno)
+    // 20+ jogos: Cap fixo
+    let fatorVolume;
+    if (partidas >= 20) {
+        fatorVolume = 1.0;
+    } else if (partidas >= 10) {
+        // 10 a 20: crescimento sutil (bônus final de 0.88 a 1.00)
+        fatorVolume = 0.88 + ((partidas - 10) / 10) * 0.12;
+    } else if (partidas >= 5) {
+        // 5 a 10: crescimento moderado (bônus de 0.65 a 0.88)
+        fatorVolume = 0.65 + ((partidas - 5) / 5) * 0.23;
+    } else {
+        // 1 a 5: crescimento agressivo (bônus de 0.00 a 0.65)
+        fatorVolume = ((partidas - 1) / 4) * 0.65;
+    }
 
-    // Exemplos (gap MÍNIMO entre partidas, crescimento até 20):
-    // 1 partida  → 0.80
-    // 2 partidas → 0.85 (+5%)
-    // 3 partidas → 0.88 (+3%)
-    // 5 partidas → 0.91 (+3%)
-    // 10 partidas → 0.96 (+5%)
-    // 20 partidas → 1.00 (+4%)
-    // 30+ partidas → 1.00 (cap fixo)
+    // Exemplos (multiplicador final para 90min):
+    // 1 partida  → 0.75 (mínimo)
+    // 3 partidas → 1.00 (+0.25)
+    // 5 partidas → 1.24 (+0.24) -> bônus de ~0.06 por jogo até aqui
+    // 8 partidas → 1.34 (+0.10) -> bônus de ~0.03 por jogo até aqui
+    // 10 partidas → 1.41 (+0.07)
+    // 15 partidas → 1.45 (+0.04) -> bônus de ~0.009 por jogo até aqui
+    // 20+ partidas → 1.50 (máximo bônus)
 
     // C) AJUSTE DE CONFIANÇA BASEADO EM MINUTOS E PARTIDAS
     // Combina os dois fatores em um multiplicador de confiança (0.75 a 1.50)
