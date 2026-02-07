@@ -152,44 +152,48 @@ function expectativaFinalizacoes(inputs, posicao, estilo, minutos, partidas) {
     // LÓGICA: Mais minutos/partida + Mais partidas = Maior confiança
     // IMPORTANTE: 'minutos' JÁ É A MÉDIA DE MINUTOS POR PARTIDA (do input do HTML)
 
-    // A) FATOR DE MÉDIA DE MINUTOS (interpolação linear 0.2 a 1.0)
+    // A) FATOR DE MÉDIA DE MINUTOS (interpolação conservadora 0.7 a 1.0)
     // Quanto mais perto de 90 minutos, maior o peso
-    // Fórmula: 0.2 + (min/90) * 0.8
-    const fatorMinutos = Math.min(1.0, 0.2 + (minutos / 90) * 0.8);
+    // Fórmula: 0.7 + (min/90) * 0.3
+    const fatorMinutos = Math.min(1.0, 0.7 + (minutos / 90) * 0.3);
 
-    // Exemplos:
-    // 0 min   → 0.20
-    // 30 min  → 0.47
-    // 45 min  → 0.60
-    // 60 min  → 0.73
-    // 75 min  → 0.87
+    // Exemplos (impacto reduzido):
+    // 0 min   → 0.70
+    // 30 min  → 0.80
+    // 45 min  → 0.85
+    // 60 min  → 0.90
+    // 75 min  → 0.95
     // 90+ min → 1.00
 
-    // B) FATOR DE VOLUME DE PARTIDAS (interpolação linear 0.3 a 1.0)
+    // B) FATOR DE VOLUME DE PARTIDAS (curva logarítmica suavizada com cap em 20)
     // Mais partidas = mais confiança estatística
-    // Fórmula: 0.3 + ((partidas-1)/14) * 0.7
-    const fatorVolume = Math.min(1.0, 0.3 + ((partidas - 1) / 14) * 0.7);
+    // Usa log para crescer até 20 partidas, depois estabiliza
+    // Fórmula: 0.80 + (log(partidas) / log(20)) * 0.20
+    const fatorVolume = partidas >= 20
+        ? 1.0
+        : Math.min(1.0, 0.80 + (Math.log(partidas) / Math.log(20)) * 0.20);
 
-    // Exemplos:
-    // 1 partida  → 0.30
-    // 3 partidas → 0.40
-    // 5 partidas → 0.50
-    // 8 partidas → 0.65
-    // 12 partidas → 0.85
-    // 15+ partidas → 1.00
+    // Exemplos (gap MÍNIMO entre partidas, crescimento até 20):
+    // 1 partida  → 0.80
+    // 2 partidas → 0.85 (+5%)
+    // 3 partidas → 0.88 (+3%)
+    // 5 partidas → 0.91 (+3%)
+    // 10 partidas → 0.96 (+5%)
+    // 20 partidas → 1.00 (+4%)
+    // 30+ partidas → 1.00 (cap fixo)
 
     // C) AJUSTE DE CONFIANÇA BASEADO EM MINUTOS E PARTIDAS
-    // Combina os dois fatores em um multiplicador de confiança (0.3 a 1.5)
-    // Range mais agressivo para impacto visível
+    // Combina os dois fatores em um multiplicador de confiança (0.75 a 1.50)
+    // Range otimizado: gap pequeno entre poucas partidas, bônus forte para 20+
 
     const pesoMinutosEPartidas = fatorMinutos * fatorVolume;
 
-    // Interpolar o peso (0 a 1) para um multiplicador de confiança (0.3 a 1.5)
-    // Peso mínimo (0.2*0.3=0.06) → Multiplicador 0.37 (penalidade BRUTAL)
-    // Peso baixo (0.4*0.5=0.20) → Multiplicador 0.54 (penalidade forte)
-    // Peso médio (0.7*0.7=0.49) → Multiplicador 0.89 (penalidade moderada)
-    // Peso alto (1.0*1.0=1.00) → Multiplicador 1.50 (bônus forte)
-    const multiplicadorConfianca = 0.30 + (pesoMinutosEPartidas * 1.20);
+    // Interpolar o peso para um multiplicador de confiança (0.75 a 1.50)
+    // Peso mínimo (0.70*0.80=0.56) → Multiplicador 0.75 (penalidade leve)
+    // Peso baixo (0.80*0.85=0.68) → Multiplicador 0.86 (penalidade mínima)
+    // Peso médio (0.90*0.91=0.82) → Multiplicador 0.99 (quase neutro)
+    // Peso alto (1.0*1.0=1.00) → Multiplicador 1.50 (bônus forte para 20+ partidas)
+    const multiplicadorConfianca = 0.75 + (pesoMinutosEPartidas * 0.75);
     lambda *= multiplicadorConfianca;
 
     // Garantir valor mínimo positivo
